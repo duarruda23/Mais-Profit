@@ -1,0 +1,66 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (getUserData().role == 'admin' || 
+         (request.auth.token.email == "estevamalves@maisprofit.com.br" && request.auth.token.email_verified == true));
+    }
+
+    function isCollaborator() {
+      return isAuthenticated() && getUserData().role == 'collaborator';
+    }
+
+    function isClient() {
+      return isAuthenticated() && getUserData().role == 'client';
+    }
+
+    function canAccessClient(clientId) {
+      return isAdmin() || 
+             (isCollaborator() && clientId in getUserData().clientIds) ||
+             (isClient() && clientId in getUserData().clientIds);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // Users collection
+    match /users/{uid} {
+      allow read: if isAuthenticated() && (request.auth.uid == uid || isAdmin());
+      allow write: if isAdmin();
+      // Allow users to create their own record during first login if isAdmin bootstraps them or via logic
+      allow create: if isAuthenticated() && (request.auth.uid == uid || isAdmin());
+    }
+
+    // Clients collection
+    match /clients/{clientId} {
+      allow read: if canAccessClient(clientId);
+      allow write: if isAdmin();
+
+      // Sub-collections: Transactions
+      match /transactions/{transactionId} {
+        allow read: if canAccessClient(clientId);
+        allow write: if isAdmin() || (isCollaborator() && clientId in getUserData().clientIds);
+      }
+
+      // Sub-collections: Sync Logs
+      match /sync_logs/{logId} {
+        allow read: if canAccessClient(clientId);
+        allow write: if isAdmin() || (isCollaborator() && clientId in getUserData().clientIds);
+      }
+    }
+  }
+}

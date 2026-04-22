@@ -1,0 +1,91 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Extended user information including roles and permissions.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Auth UID" },
+        "email": { "type": "string", "format": "email" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "collaborator", "client"] },
+        "clientIds": { "type": "array", "description": "IDs of clients this user can access (relevant for Colab/Client roles)" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Client": {
+      "title": "Client Company",
+      "description": "A company managed by the BPO service.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "dataSource": { "type": "string", "enum": ["omie", "conta_azul", "nibo", "excel"] },
+        "company": { "type": "string", "description": "Legal name of the company" },
+        "omieCreds": {
+          "type": "object",
+          "properties": {
+            "appKey": { "type": "string" },
+            "appSecret": { "type": "string" }
+          }
+        },
+        "contaAzulCreds": {
+          "type": "object",
+          "properties": {
+            "clientId": { "type": "string" },
+            "clientSecret": { "type": "string" }
+          }
+        },
+        "niboCreds": {
+          "type": "object",
+          "properties": {
+            "apiToken": { "type": "string" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string" },
+        "shared": { "type": "boolean" },
+        "views": { "type": "number" },
+        "lastAccess": { "type": "string" }
+      },
+      "required": ["name", "dataSource", "company"]
+    },
+    "Transaction": {
+      "title": "Financial Transaction",
+      "description": "A revenue or expense entry.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clientId": { "type": "string" },
+        "type": { "type": "string", "enum": ["revenue", "expense"] },
+        "category": { "type": "string" },
+        "amount": { "type": "number" },
+        "description": { "type": "string" },
+        "dueDate": { "type": "string", "format": "date" },
+        "paymentDate": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["pending", "paid", "overdue"] },
+        "source": { "type": "string", "enum": ["omie", "conta_azul", "excel"] }
+      },
+      "required": ["clientId", "type", "amount", "dueDate", "status"]
+    },
+    "SyncLog": {
+      "title": "Sync Refresh Log",
+      "description": "History of data synchronization events.",
+      "type": "object",
+      "properties": {
+        "clientId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["success", "error"] },
+        "message": { "type": "string" },
+        "userUid": { "type": "string", "description": "User who triggered the sync" }
+      },
+      "required": ["clientId", "timestamp", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": { "schema": "User", "description": "User profiles" },
+    "/clients/{clientId}": { "schema": "Client", "description": "Client company metadata" },
+    "/clients/{clientId}/transactions/{transactionId}": { "schema": "Transaction", "description": "Client financial data" },
+    "/clients/{clientId}/sync_logs/{logId}": { "schema": "SyncLog", "description": "Sync history for a specific client" }
+  }
+}
